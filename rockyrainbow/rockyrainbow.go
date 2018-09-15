@@ -2,6 +2,7 @@ package rockyrainbow
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -10,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -19,6 +21,10 @@ import (
 
 	"../go-ntlm"
 )
+
+// DecoratorFunction is used for each message before it's hashed. It can be used
+// to precompute a list with a salt, for instance.
+type DecoratorFunction func([]byte) []byte
 
 // Hash is the hash type for rockyrainbow
 type Hash int
@@ -40,18 +46,22 @@ var hashNames = []string{
 	"ntlm",
 }
 
+var i = 0
+
 const defaultWorkersCount = 256
 
 // RockyRainbow main config struct
 type RockyRainbow struct {
-	InputFile     string
-	OutputFile    string
-	HashAlgorithm Hash
-	WorkersCount  int
+	InputFile         string
+	OutputFile        string
+	HashAlgorithm     Hash
+	WorkersCount      int
+	DecoratorFunction DecoratorFunction
 
 	inFile  *os.File
 	outFile *os.File
 	m       sync.Mutex
+	status  bool
 
 	done chan bool
 	msgs chan string
@@ -78,6 +88,48 @@ func New(r *RockyRainbow) (*RockyRainbow, error) {
 	return r, nil
 }
 
+func lineCounter(filename string) (int, error) {
+	r, _ := os.Open(filename)
+	defer r.Close()
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
+	}
+}
+
+func (r *RockyRainbow) displayConf() {
+	bullet := func() string {
+		return "▶"
+	}
+	bp := func(format string, a ...interface{}) {
+		fmt.Print(bullet() + " ")
+		fmt.Printf(format, a...)
+		fmt.Println()
+	}
+	bp("Input file\t\t%s", r.InputFile)
+	bp("Output file\t\t%s", r.OutputFile)
+	bp("Hash Algorighm\t%s", hashNames[r.HashAlgorithm])
+	totalPasswords, _ := lineCounter(r.InputFile)
+	bp("Total Passwords\t%+v", totalPasswords)
+	bp("Parallel Workers\t%d", r.WorkersCount)
+	if r.DecoratorFunction != nil {
+		bp("Decorator Func\t%+v", r.DecoratorFunction)
+	}
+	fmt.Println()
+}
+
 // Start the rockyrainbow process
 func (r *RockyRainbow) Start() (err error) {
 	r.outFile, err = os.Create(r.OutputFile)
@@ -92,15 +144,18 @@ func (r *RockyRainbow) Start() (err error) {
 		r.inFile.Close()
 		r.outFile.Close()
 	}()
-
-	log.Printf("Loading job queue")
+	r.displayConf()
+	p("Loading jobs queue")
 	go r.queuer()
 
-	log.Printf("Loading %d workers", r.WorkersCount)
+	p("Loading workers")
 	for i := 0; i < r.WorkersCount; i++ {
 		go r.worker()
 	}
-	log.Println("Waiting for workers to complete...")
+
+	go statusLoop(&r.status)
+
+	p("Waiting for workers to complete, type ENTER for current status...")
 	for i := 0; i < r.WorkersCount; i++ {
 		<-r.done
 	}
@@ -121,6 +176,12 @@ func (r *RockyRainbow) queuer() {
 func (r *RockyRainbow) worker() {
 	for msg := range r.msgs {
 		var h hash.Hash
+		msgByteSlice := []byte(msg)
+
+		if r.DecoratorFunction != nil {
+			msgByteSlice = r.DecoratorFunction(msgByteSlice)
+		}
+
 		switch r.HashAlgorithm {
 		case MD5:
 			h = md5.New()
@@ -140,7 +201,11 @@ func (r *RockyRainbow) worker() {
 		default:
 			panic("Invalid hash algorithm")
 		}
-		h.Write([]byte(msg))
+		if r.status {
+			p("Current status {password: %s, iteration: %d}", msg, i)
+			r.status = false
+		}
+		h.Write(msgByteSlice)
 		r.m.Lock()
 		r.outFile.WriteString(
 			fmt.Sprintf(
@@ -150,6 +215,7 @@ func (r *RockyRainbow) worker() {
 			),
 		)
 		r.m.Unlock()
+		i++
 	}
 	r.done <- true
 }
@@ -160,4 +226,20 @@ func (r *RockyRainbow) createOutputFileName() string {
 		lastDotPos = len(r.InputFile)
 	}
 	return r.InputFile[0:lastDotPos] + "_precomputed_" + hashNames[r.HashAlgorithm] + ".txt"
+}
+
+func statusLoop(status *bool) {
+	for {
+		r := bufio.NewReader(os.Stdin)
+		r.ReadByte()
+		*status = true
+	}
+}
+
+func p(format string, a ...interface{}) {
+	t := time.Now()
+	now := fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second())
+	fmt.Printf("[%s] ", now)
+	fmt.Printf(format, a...)
+	fmt.Println()
 }

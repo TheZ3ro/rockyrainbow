@@ -32,23 +32,24 @@ func main() {
 		return
 	}
 
-	fileName := func(f string) string {
+	fileName := func() string {
+		f := os.Args[2]
 		if _, err := os.Stat(f); err != nil {
 			log.Fatal(err)
 		}
 		return f
-	}(os.Args[1])
+	}
 
 	hashAlgo := func() rockyrainbow.Hash {
 		if argsLen < 3 {
 			return rockyrainbow.MD5
 		}
 		return h[os.Args[2]]
-	}()
+	}
 
 	r := new(rockyrainbow.RockyRainbow)
-	r.InputFile = fileName
-	r.HashAlgorithm = hashAlgo
+	r.InputFile = fileName()
+	r.HashAlgorithm = hashAlgo()
 	rocky, err := rockyrainbow.New(r)
 	if err != nil {
 		log.Fatal(err)

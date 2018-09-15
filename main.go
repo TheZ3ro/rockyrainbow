@@ -10,6 +10,7 @@ import (
 
 var h = map[string]rockyrainbow.Hash{
 	"md5":    rockyrainbow.MD5,
+	"sha1":   rockyrainbow.SHA1,
 	"sha256": rockyrainbow.SHA256,
 	"sha512": rockyrainbow.SHA512,
 }
@@ -33,7 +34,7 @@ func main() {
 	}
 
 	fileName := func() string {
-		f := os.Args[2]
+		f := os.Args[1]
 		if _, err := os.Stat(f); err != nil {
 			log.Fatal(err)
 		}

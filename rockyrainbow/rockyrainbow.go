@@ -3,6 +3,7 @@ package rockyrainbow
 import (
 	"bufio"
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
@@ -22,6 +23,7 @@ type Hash int
 
 const (
 	MD5 Hash = iota
+	SHA1
 	SHA256
 	SHA512
 )
@@ -29,6 +31,7 @@ const (
 // from Hash constants
 var hashNames = []string{
 	"md5",
+	"sha1",
 	"sha256",
 	"sha512",
 }
@@ -118,12 +121,17 @@ func (r *RockyRainbow) worker() {
 		case MD5:
 			h = md5.New()
 			break
+		case SHA1:
+			h = sha1.New()
+			break
 		case SHA256:
 			h = sha256.New()
 			break
 		case SHA512:
 			h = sha512.New()
 			break
+		default:
+			panic("Invalid hash algorithm")
 		}
 		h.Write([]byte(msg))
 		r.m.Lock()

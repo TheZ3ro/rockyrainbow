@@ -86,6 +86,9 @@ func (r *RockyRainbow) Start() (err error) {
 		r.outFile.Close()
 	}()
 
+	log.Printf("Loading job queue")
+	go r.queuer()
+
 	log.Printf("Loading %d workers", r.WorkersCount)
 	for i := 0; i < r.WorkersCount; i++ {
 		go r.worker()

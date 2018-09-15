@@ -14,23 +14,24 @@ var h = map[string]rockyrainbow.Hash{
 	"sha512": rockyrainbow.SHA512,
 }
 
-func usage() {
+func usage() bool {
 	fmt.Printf("Usage: %s <inputfile> <hash_algorithm>\n", os.Args[0])
 	fmt.Println("Supported hashes:")
 	for a := range h {
 		fmt.Printf("%s ", a)
 	}
 	fmt.Println()
+	return true
 }
 
 func main() {
 
 	argsLen := len(os.Args)
 
-	if argsLen < 2 {
-		usage()
+	if argsLen < 2 && usage() {
 		return
 	}
+
 	fileName := func(f string) string {
 		if _, err := os.Stat(f); err != nil {
 			log.Fatal(err)
@@ -53,5 +54,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rocky.Start()
+	if err = rocky.Start(); err != nil {
+		log.Fatal(err)
+	}
 }

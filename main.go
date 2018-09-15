@@ -13,6 +13,7 @@ var h = map[string]rockyrainbow.Hash{
 	"sha1":   rockyrainbow.SHA1,
 	"sha256": rockyrainbow.SHA256,
 	"sha512": rockyrainbow.SHA512,
+	"ntlm":   rockyrainbow.NTLM,
 }
 
 func usage() bool {

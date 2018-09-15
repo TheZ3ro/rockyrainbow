@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"../go-ntlm"
 )
 
 // Hash is the hash type for rockyrainbow
@@ -26,6 +28,7 @@ const (
 	SHA1
 	SHA256
 	SHA512
+	NTLM
 )
 
 // from Hash constants
@@ -34,6 +37,7 @@ var hashNames = []string{
 	"sha1",
 	"sha256",
 	"sha512",
+	"ntlm",
 }
 
 const defaultWorkersCount = 256
@@ -129,6 +133,9 @@ func (r *RockyRainbow) worker() {
 			break
 		case SHA512:
 			h = sha512.New()
+			break
+		case NTLM:
+			h = ntlm.New()
 			break
 		default:
 			panic("Invalid hash algorithm")

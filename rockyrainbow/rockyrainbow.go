@@ -174,33 +174,35 @@ func (r *RockyRainbow) queuer() {
 }
 
 func (r *RockyRainbow) worker() {
+	var h hash.Hash
+
+	switch r.HashAlgorithm {
+	case MD5:
+		h = md5.New()
+		break
+	case SHA1:
+		h = sha1.New()
+		break
+	case SHA256:
+		h = sha256.New()
+		break
+	case SHA512:
+		h = sha512.New()
+		break
+	case NTLM:
+		h = ntlm.New()
+		break
+	default:
+		panic("Invalid hash algorithm")
+	}
 	for msg := range r.msgs {
-		var h hash.Hash
+		h.Reset()
 		msgByteSlice := []byte(msg)
 
 		if r.DecoratorFunction != nil {
 			msgByteSlice = r.DecoratorFunction(msgByteSlice)
 		}
 
-		switch r.HashAlgorithm {
-		case MD5:
-			h = md5.New()
-			break
-		case SHA1:
-			h = sha1.New()
-			break
-		case SHA256:
-			h = sha256.New()
-			break
-		case SHA512:
-			h = sha512.New()
-			break
-		case NTLM:
-			h = ntlm.New()
-			break
-		default:
-			panic("Invalid hash algorithm")
-		}
 		if r.status {
 			p("Current status {password: %s, iteration: %d}", msg, i)
 			r.status = false

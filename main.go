@@ -52,6 +52,7 @@ func main() {
 	r := new(rockyrainbow.RockyRainbow)
 	r.InputFile = fileName()
 	r.HashAlgorithm = hashAlgo()
+	// r.DecoratorFunction = addSalt
 	rocky, err := rockyrainbow.New(r)
 	if err != nil {
 		log.Fatal(err)
@@ -61,3 +62,13 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// func addSalt(in []byte) []byte {
+// 	salt := []byte{'a', '1', '3', 'f'}
+// 	h := md5.New()
+// 	h.Write(in)
+// 	in = h.Sum(nil)
+// 	h.Reset()
+// 	h.Write(salt)
+// 	return h.Sum(nil)
+// }

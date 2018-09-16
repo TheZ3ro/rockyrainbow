@@ -27,7 +27,7 @@ import (
 type DecoratorFunction func([]byte) []byte
 
 // Hash is the hash type for rockyrainbow
-type Hash int
+type Hash uint
 
 const (
 	MD5 Hash = iota
@@ -110,19 +110,16 @@ func lineCounter(filename string) (int, error) {
 }
 
 func (r *RockyRainbow) displayConf() {
-	bullet := func() string {
-		return "▶"
-	}
 	bp := func(format string, a ...interface{}) {
-		fmt.Print(bullet() + " ")
-		fmt.Printf(format, a...)
-		fmt.Println()
+		const bullet = "▶"
+		fmt.Print(bullet + " ")
+		fmt.Printf(format+"\n", a...)
 	}
 	bp("Input file\t\t%s", r.InputFile)
 	bp("Output file\t\t%s", r.OutputFile)
 	bp("Hash Algorighm\t%s", hashNames[r.HashAlgorithm])
 	totalPasswords, _ := lineCounter(r.InputFile)
-	bp("Total Passwords\t%+v", totalPasswords)
+	bp("Total Passwords\t%d", totalPasswords)
 	bp("Parallel Workers\t%d", r.WorkersCount)
 	if r.DecoratorFunction != nil {
 		bp("Decorator Func\t%+v", r.DecoratorFunction)
@@ -132,12 +129,10 @@ func (r *RockyRainbow) displayConf() {
 
 // Start the rockyrainbow process
 func (r *RockyRainbow) Start() (err error) {
-	r.outFile, err = os.Create(r.OutputFile)
-	if err != nil {
+	if r.outFile, err = os.Create(r.OutputFile); err != nil {
 		return
 	}
-	r.inFile, err = os.Open(r.InputFile)
-	if err != nil {
+	if r.inFile, err = os.Open(r.InputFile); err != nil {
 		return
 	}
 	defer func() {
@@ -145,6 +140,7 @@ func (r *RockyRainbow) Start() (err error) {
 		r.outFile.Close()
 	}()
 	r.displayConf()
+
 	p("Loading jobs queue")
 	go r.queuer()
 
@@ -153,12 +149,12 @@ func (r *RockyRainbow) Start() (err error) {
 		go r.worker()
 	}
 
-	go statusLoop(&r.status)
-
 	p("Waiting for workers to complete, type ENTER for current status...")
+	go statusLoop(&r.status)
 	for i := 0; i < r.WorkersCount; i++ {
 		<-r.done
 	}
+
 	time.Sleep(1 * time.Second)
 	return
 }
@@ -231,8 +227,8 @@ func (r *RockyRainbow) createOutputFileName() string {
 }
 
 func statusLoop(status *bool) {
+	r := bufio.NewReader(os.Stdin)
 	for {
-		r := bufio.NewReader(os.Stdin)
 		r.ReadByte()
 		*status = true
 	}
@@ -240,8 +236,6 @@ func statusLoop(status *bool) {
 
 func p(format string, a ...interface{}) {
 	t := time.Now()
-	now := fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second())
-	fmt.Printf("[%s] ", now)
-	fmt.Printf(format, a...)
-	fmt.Println()
+	fmt.Printf("[%02d:%02d:%02d] ", t.Hour(), t.Minute(), t.Second())
+	fmt.Printf(format+"\n", a...)
 }
